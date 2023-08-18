@@ -1,0 +1,113 @@
+---
+title: "NYPD Shooting Incident Shooting Data"
+author: "Wei Wang"
+date: "2023-08-18"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This project aims to analyze a spreadsheet containing recorded shooting incidents that occurred in New York City through the end of the previous calendar year. The goal is to forecast crime rates in the five boroughs of NYC using Facebook Prophet to potentially improve police resources.
+
+[The City of New York on data.gov](https://catalog.data.gov/dataset/nypd-shooting-incident-data-historic) describes this dataset as "a breakdown of every shooting incident that occurred in NYC going back to 2006 through the end of the previous calendar year. This data is manually extracted every quarter and reviewed by the Office of Management Analysis and Planning before being posted on the NYPD website. Each record represents a shooting incident in NYC and includes information about the event, the location and time of occurrence. In addition, information related to suspect and victim demographics is also included. This data can be used by the public to explore the nature of shooting/criminal activity."
+
+## Importing Libraries
+```{r library, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(prophet)
+library(dygraphs)
+library(lubridate)
+library(dplyr)
+```
+## Reading the Data
+* 'read_csv() reads comma delimited csv files. A snapshot of the data is stored at this [address.]( https://raw.githubusercontent.com/davidwangweiyu/data_science_asafield_coursework/main/NYPD_Shooting_Incident_Data__Historic_.csv)
+
+``` {r read}
+url <- "https://raw.githubusercontent.com/davidwangweiyu/data_science_asafield_coursework/main/NYPD_Shooting_Incident_Data__Historic_.csv"
+df <- read_csv(url)
+```
+## Data Transformation and Cleaning
+
+### Data Transformation
+* 'mdy(paste(x, y)) formats the a column of the occurrence date (in month date year) into a column of year-month-date hour
+
+``` {r transform}
+df$ds <- mdy(paste(df$OCCUR_DATE))
+head(df$ds)
+```
+
+* 'any(is.na(df#column)) checks if there are any empty values a specified column in a dataframe
+
+``` {r check null}
+any(is.na(df$ds))
+any(is.na(df$INCIDENT_KEY))
+```
+
+In this case, there are no empty values to worry about.
+
+### Data Cleaning
+For this analysis, only 2 columns are kept, INCIDENT_KEY, and the  date column created above.
+
+``` {r clean}
+dfc <- df[, c("ds", "INCIDENT_KEY")]
+head(dfc)
+```
+I wanted to identify if there were duplicate incident keys. It turns out, out of 27312 objects, only 21420 have unique incident keys. This could mean multiple perpetrators or victims per incident. Only unique incidents are kept. 
+
+* 'distinct()is used to select distinct or unique rows from the R data frame
+
+``` {r unique}
+# Total objects
+dim(dfc)[1]
+# Unique Objects
+unique_dfc <- distinct(dfc, INCIDENT_KEY, .keep_all = TRUE)
+dim(unique_dfc)[1]
+
+# Creating a pie chart
+pie_data <- c(dim(dfc)[1], dim(dfc)[1] - dim(unique_dfc)[1])
+labels <- c("Unique Incident Keys", "Duplicate Incident Keys")
+pie(pie_data, labels = labels, main = "Total Incident Keys", col = c("blue", "red"))
+```
+
+Lastly the data is grouped days.
+
+* 'group_by() creates a grouped dataframe from an existing dataframe by an operation
+* 'summarise() creates a new dataframe returning the combination of grouping variables
+
+``` {r intervals}
+# ds represents date, y represents the count of unique incidents within the timeframe
+
+df_analysis <- unique_dfc %>%
+  group_by(ds) %>%
+  summarise(y = n())
+
+head(df_analysis)
+tail(df_analysis)
+```
+## Data Analysis Forecast and Visualization
+This analysis uses Prophet by Facebook to conduct a time series forecast on the NYC Shooting Incident Data. Each borough will be examined individually and NYC will be examined as a whole.
+
+* 'prophet() is used to fit the model with the dataframe being the historical dataframe
+* 'make_future_dataframe takes the model object and a number of periods to forecast and produces a suitable dataframe
+* 'predict(model, future) uses a prediction function to create a timeseries forecast
+* 'prophet_plot_components(model, forecast) plots the timeseries forecast components
+
+``` {r prophet analysis}
+m <- prophet(df_analysis)
+future <- make_future_dataframe(m, periods = 365)
+forecast <- predict(m, future)
+tail(forecast[c('ds', 'yhat', 'yhat_lower', 'yhat_upper')])
+
+# Plotting forecast analysis results
+plot(m, forecast)
+# Components
+prophet_plot_components(m, forecast)
+
+# Interactive plot
+dyplot.prophet(m, forecast)
+```
+## Results
+From the predictive forecast analysis we can see that unique shooting incidents was trending down from 2006 until 2018 when it began to increase at a rapid pace reaching new highs in 2021. In terms of weekly seasonality, unique shooting incidents peaks on the weekends and bottoms out on Wednesdays and Thursdays. In terms of yearly seasonality, unique shooting incidents peak at July and bottoms out in March. 
+
