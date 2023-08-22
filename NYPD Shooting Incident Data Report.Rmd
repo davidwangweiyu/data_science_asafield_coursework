@@ -1,8 +1,9 @@
 ---
 title: "NYPD Shooting Incident Shooting Data"
-author: "Wei Wang"
-date: "2023-08-18"
-output: html_document
+author: "Wei Yu (David) Wang"
+date: "2023-08-22"
+output:
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -13,6 +14,8 @@ This project aims to analyze a spreadsheet containing recorded shooting incident
 
 [The City of New York on data.gov](https://catalog.data.gov/dataset/nypd-shooting-incident-data-historic) describes this dataset as "a breakdown of every shooting incident that occurred in NYC going back to 2006 through the end of the previous calendar year. This data is manually extracted every quarter and reviewed by the Office of Management Analysis and Planning before being posted on the NYPD website. Each record represents a shooting incident in NYC and includes information about the event, the location and time of occurrence. In addition, information related to suspect and victim demographics is also included. This data can be used by the public to explore the nature of shooting/criminal activity."
 
+**This RMD can only be knitted to HTML because of the presence of an interactive chart**
+
 ## Importing Libraries
 ```{r library, message=FALSE, warning=FALSE}
 library(tidyverse)
@@ -21,14 +24,15 @@ library(dygraphs)
 library(lubridate)
 library(dplyr)
 ```
+
 ## Reading the Data
 * 'read_csv() reads comma delimited csv files. A snapshot of the data is stored at this [address.]( https://raw.githubusercontent.com/davidwangweiyu/data_science_asafield_coursework/main/NYPD_Shooting_Incident_Data__Historic_.csv)
 
 ``` {r read}
-url <- "https://raw.githubusercontent.com/davidwangweiyu/data_science_asafield_coursework/main/NYPD_Shooting_Incident_Data__Historic_.csv"
+url <- "https://data.cityofnewyork.us/api/views/833y-fsy8/rows.csv?accessType=DOWNLOAD"
 df <- read_csv(url)
 ```
-## Data Transformation and Cleaning
+## Tidying and Transforming Data
 
 ### Data Transformation
 * 'mdy(paste(x, y)) formats the a column of the occurrence date (in month date year) into a column of year-month-date hour
@@ -86,7 +90,7 @@ df_analysis <- unique_dfc %>%
 head(df_analysis)
 tail(df_analysis)
 ```
-## Data Analysis Forecast and Visualization
+## Analysis and Visualizations
 This analysis uses Prophet by Facebook to conduct a time series forecast on the NYC Shooting Incident Data. Each borough will be examined individually and NYC will be examined as a whole.
 
 * 'prophet() is used to fit the model with the dataframe being the historical dataframe
@@ -108,6 +112,15 @@ prophet_plot_components(m, forecast)
 # Interactive plot
 dyplot.prophet(m, forecast)
 ```
-## Results
+## Conclusion and Possible Sources of Biases
+
+### Conclusion
 From the predictive forecast analysis we can see that unique shooting incidents was trending down from 2006 until 2018 when it began to increase at a rapid pace reaching new highs in 2021. In terms of weekly seasonality, unique shooting incidents peaks on the weekends and bottoms out on Wednesdays and Thursdays. In terms of yearly seasonality, unique shooting incidents peak at July and bottoms out in March. 
 
+### Bias Sources
+Working with police data, there is inherent bias in that the data is solely sourced from the NYPD. If a shooting incident occurs and is not recorded by the NYPD, it is not reflected in our data analysis. My analysis also only looks at individual incidents and treats multi-perpetrator and multi-victim events as a single incident, even though these events can be more severe. In terms of algorithmic bias, only visual inspections of the model was done with no validation statistics produced. This results in no metrics produced on how well the model performed. There is also an option to add additional seasonality such as holidays, major events that was not implemented which could provide a more complete forecast and analysis. Lastly, this analysis only explores unique incidents and has omitted fields such as race, age, and gender potentially adding bias in not seeing potential systemic patterns relating to these attributes. 
+
+## Citation
+Taylor, S. J., &amp; Letham, B. (2017). Forecasting at Scale. https://doi.org/10.7287/peerj.preprints.3190v2 
+
+Forecasting at scale. Prophet. (n.d.). https://facebook.github.io/prophet/ 
